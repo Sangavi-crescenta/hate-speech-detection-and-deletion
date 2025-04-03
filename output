@@ -1,0 +1,8 @@
+[nltk_data] Downloading package stopwords to
+[nltk_data]     C:\Users\ADMIN\AppData\Roaming\nltk_data...
+[nltk_data]   Package stopwords is already up-to-date!
+
+Filtered tweets saved to filtered_tweets.csv
+Detected: Offensive language detected
+✅ Tweet is safe!
+
