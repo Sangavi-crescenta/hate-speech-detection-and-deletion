@@ -1,0 +1,90 @@
+import pandas as pd
+import numpy as np
+import re
+import string
+import nltk
+from nltk.stem import SnowballStemmer
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+
+# Download stopwords
+nltk.download('stopwords')
+
+# Initialize stemmer and stopwords
+stemmer = SnowballStemmer("english")
+stopword_set = set(stopwords.words("english"))
+
+# Load dataset
+df = pd.read_csv("twitter_data.csv")
+
+# Mapping class labels
+df["labels"] = df['class'].map({
+    0: "Hate Speech Detected", 
+    1: "Offensive language detected", 
+    2: "Offensive language detected", 
+    3: "No hate and offensive"
+})
+
+# Keep only required columns
+df = df[['tweet', 'labels']]
+
+# Text cleaning function
+def clean(text):
+    text = str(text).lower()  
+    text = re.sub(r'\[.*?\]', '', text)  
+    text = re.sub(r'https?://\S+', '', text)  
+    text = re.sub(r'<.*?>+', '', text)  
+    text = re.sub(r'[%s]' % re.escape(string.punctuation), '', text)  
+    text = re.sub(r'\n', ' ', text)  
+    text = re.sub(r'\w*\d\w*', '', text)  
+
+    text = [word for word in text.split() if word not in stopword_set]
+    text = [stemmer.stem(word) for word in text]
+
+    return " ".join(text)
+
+df["tweet"] = df["tweet"].apply(clean)
+
+# Convert text to vectors
+cv = CountVectorizer()
+X = cv.fit_transform(df["tweet"])
+y = df["labels"]
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+# Train model
+clf = DecisionTreeClassifier()
+clf.fit(X_train, y_train)
+
+# Predict labels for all tweets in dataset
+df["predicted_label"] = clf.predict(cv.transform(df["tweet"]))
+
+# ❌ Delete tweets classified as "Hate Speech Detected"
+df_filtered = df[df["predicted_label"].str.lower() != "hate speech detected"]
+
+
+# Save the cleaned dataset
+df_filtered.to_csv("filtered_tweets.csv", index=False)
+print("Filtered tweets saved to filtered_tweets.csv")
+
+
+# ✅ Function to detect and delete a single test tweet
+def detect_and_delete(test_data):
+    cleaned_test_data = clean(test_data)  # Apply cleaning
+    test_vector = cv.transform([cleaned_test_data]).toarray()
+    prediction = clf.predict(test_vector)[0]  # Get the predicted label
+    
+    print(f"Detected: {prediction}")  # Show classification result
+    
+    # If hate speech is detected, "delete" the tweet
+    if prediction.lower() == "hate speech detected":
+        print("❌ Tweet deleted!")  # Simulate deletion
+    else:
+        print("✅ Tweet is safe!")
+
+# 📝 Test with a new tweet
+test_data = "you are good person"
+detect_and_delete(test_data)
